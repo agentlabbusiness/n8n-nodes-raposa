@@ -1,0 +1,49 @@
+{
+  "name": "n8n-nodes-raposa",
+  "version": "0.1.0",
+  "description": "n8n community node for Raposa Aval: pause a workflow until an authorised human approves, with a hash-chained audit record of the decision.",
+  "license": "MIT",
+  "homepage": "https://raposa.group/docs/",
+  "author": {
+    "name": "DC ESCRYPT SL",
+    "email": "contact@raposa.group"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/agentlabbusiness/n8n-nodes-raposa.git"
+  },
+  "keywords": [
+    "n8n-community-node-package",
+    "raposa",
+    "human-in-the-loop",
+    "approval",
+    "ai-agents",
+    "audit-log"
+  ],
+  "main": "index.js",
+  "files": [
+    "dist"
+  ],
+  "n8n": {
+    "n8nNodesApiVersion": 1,
+    "credentials": [
+      "dist/credentials/RaposaApi.credentials.js"
+    ],
+    "nodes": [
+      "dist/nodes/Raposa/Raposa.node.js"
+    ]
+  },
+  "scripts": {
+    "build": "tsc && node scripts/copy-icons.mjs",
+    "lint": "tsc --noEmit",
+    "test": "npm run build && node --test tests/*.test.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "n8n-workflow": "^2.16.0",
+    "typescript": "^5.5.0"
+  },
+  "peerDependencies": {
+    "n8n-workflow": "*"
+  }
+}
