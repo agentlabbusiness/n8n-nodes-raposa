@@ -1,9 +1,9 @@
 # Publishes n8n-nodes-raposa to npm with a provenance statement.
 # n8n verified community nodes require this path since 2026-05-01
 # (https://docs.n8n.io/integrations/community-nodes/building-community-nodes/).
-# Auth: npm Trusted Publishing (OIDC) — configure on npmjs.com → package → Settings →
-# Trusted publisher: repository agentlabbusiness/n8n-nodes-raposa, workflow publish.yml.
-# No NPM_TOKEN secret is needed once the trusted publisher is set.
+# Auth: the NPM_TOKEN repository secret (granular publish token from 1Password Dev-API/npm).
+# Provenance is attested through the workflow's OIDC id-token regardless of the auth method.
+# Optional upgrade: configure npm Trusted Publishing on npmjs.com and drop the secret.
 name: publish
 
 on:
@@ -28,3 +28,5 @@ jobs:
       - run: npm run lint
       - run: npm test
       - run: npm publish --access public --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}   # granular publish token; provenance still comes from the OIDC id-token

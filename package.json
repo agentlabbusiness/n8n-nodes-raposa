@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-raposa",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "n8n community node for Raposa Aval: pause a workflow until an authorised human approves, with a hash-chained audit record of the decision.",
   "license": "MIT",
   "homepage": "https://raposa.group/docs/",
