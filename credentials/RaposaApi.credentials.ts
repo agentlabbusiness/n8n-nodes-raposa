@@ -2,11 +2,14 @@ import type {
 	IAuthenticateGeneric,
 	ICredentialTestRequest,
 	ICredentialType,
+	Icon,
 	INodeProperties,
 } from 'n8n-workflow';
 
 export class RaposaApi implements ICredentialType {
 	name = 'raposaApi';
+
+	icon: Icon = { light: 'file:raposa.svg', dark: 'file:raposa.dark.svg' };
 
 	displayName = 'Raposa API';
 

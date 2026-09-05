@@ -6,7 +6,7 @@ import type {
 	INodeTypeDescription,
 	IHttpRequestOptions,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionTypes, NodeOperationError, sleep } from 'n8n-workflow';
 
 type Approval = {
 	id: string;
@@ -14,21 +14,20 @@ type Approval = {
 	[key: string]: unknown;
 };
 
-const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
-
 export class Raposa implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Raposa Approval',
 		name: 'raposa',
-		icon: 'file:raposa.svg',
+		icon: { light: 'file:raposa.svg', dark: 'file:raposa.dark.svg' },
 		group: ['transform'],
 		version: 1,
+		usableAsTool: true,
 		subtitle: '={{$parameter["operation"]}}',
 		description:
 			'Pause until an authorised human approves an action; every decision is sealed in a hash-chained audit log',
 		defaults: { name: 'Raposa Approval' },
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [{ name: 'raposaApi', required: true }],
 		properties: [
 			{

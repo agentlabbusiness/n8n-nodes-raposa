@@ -1,11 +1,14 @@
-// tsc does not copy non-TS assets; n8n resolves the icon relative to the compiled node file.
-import { copyFileSync, mkdirSync } from 'node:fs';
+// tsc does not copy non-TS assets; n8n resolves icons relative to the compiled node/credential file.
+import { copyFileSync, mkdirSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-const src = join(root, 'nodes', 'Raposa', 'raposa.svg');
-const dst = join(root, 'dist', 'nodes', 'Raposa', 'raposa.svg');
-mkdirSync(dirname(dst), { recursive: true });
-copyFileSync(src, dst);
-console.log('icon copied →', dst);
+for (const dir of ['nodes/Raposa', 'credentials']) {
+	for (const f of readdirSync(join(root, dir)).filter((n) => n.endsWith('.svg'))) {
+		const dst = join(root, 'dist', dir, f);
+		mkdirSync(dirname(dst), { recursive: true });
+		copyFileSync(join(root, dir, f), dst);
+		console.log('icon copied →', dst);
+	}
+}
