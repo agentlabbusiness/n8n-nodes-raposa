@@ -18,7 +18,7 @@ export class Raposa implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Raposa Approval',
 		name: 'raposa',
-		icon: { light: 'file:raposa.svg', dark: 'file:raposa.dark.svg' },
+		icon: { light: 'file:raposa.png', dark: 'file:raposa.dark.png' },
 		group: ['transform'],
 		version: 1,
 		usableAsTool: true,
@@ -72,6 +72,7 @@ export class Raposa implements INodeType {
 				type: 'string',
 				typeOptions: { rows: 3 },
 				default: '',
+				required: true,
 				description: 'Why. Free text the approver sees. Do not put special-category personal data here.',
 				displayOptions: { show: { operation: ['wait', 'create'] } },
 			},

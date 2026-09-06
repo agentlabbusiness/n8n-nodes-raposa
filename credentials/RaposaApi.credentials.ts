@@ -9,7 +9,7 @@ import type {
 export class RaposaApi implements ICredentialType {
 	name = 'raposaApi';
 
-	icon: Icon = { light: 'file:raposa.svg', dark: 'file:raposa.dark.svg' };
+	icon: Icon = { light: 'file:raposa.png', dark: 'file:raposa.dark.png' };
 
 	displayName = 'Raposa API';
 

@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 for (const dir of ['nodes/Raposa', 'credentials']) {
-	for (const f of readdirSync(join(root, dir)).filter((n) => n.endsWith('.svg'))) {
+	for (const f of readdirSync(join(root, dir)).filter((n) => /\.(svg|png)$/.test(n))) {
 		const dst = join(root, 'dist', dir, f);
 		mkdirSync(dirname(dst), { recursive: true });
 		copyFileSync(join(root, dir, f), dst);
