@@ -46,7 +46,7 @@ test('node description lists the three operations and requires the credential', 
 
 test('create posts the approval body and returns the id without polling', async () => {
 	const ctx = makeContext({
-		params: { operation: 'create', action: 'refund #1', context: 'why', risk: 'high', requestedBy: 'agent-1', webhookUrl: 'https://hook.example/x' },
+		params: { operation: 'create', action: 'refund #1', risk: 'high', additionalFields: { context: 'why', requestedBy: 'agent-1', webhookUrl: 'https://hook.example/x' } },
 		responses: [{ id: 'ap_1', status: 'pending' }],
 	});
 	const [out] = await new Raposa().execute.call(ctx);
