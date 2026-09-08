@@ -29,4 +29,4 @@ jobs:
       - run: npm test
       - run: npm publish --access public --provenance
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}   # granular publish token; provenance still comes from the OIDC id-token
+          NODE_AUTH_TOKEN: ${{ secrets.NPM }}   # granular publish token (repo secret named NPM); provenance still comes from the OIDC id-token
