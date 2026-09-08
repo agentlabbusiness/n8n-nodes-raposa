@@ -31,10 +31,19 @@ export class Raposa implements INodeType {
 		credentials: [{ name: 'raposaApi', required: true }],
 		properties: [
 			{
+				displayName: 'Resource',
+				name: 'resource',
+				type: 'options',
+				noDataExpression: true,
+				options: [{ name: 'Approval', value: 'approval' }],
+				default: 'approval',
+			},
+			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
 				noDataExpression: true,
+				displayOptions: { show: { resource: ['approval'] } },
 				options: [
 					{
 						name: 'Ask and Wait',
@@ -67,16 +76,6 @@ export class Raposa implements INodeType {
 				displayOptions: { show: { operation: ['wait', 'create'] } },
 			},
 			{
-				displayName: 'Context',
-				name: 'context',
-				type: 'string',
-				typeOptions: { rows: 3 },
-				default: '',
-				required: true,
-				description: 'Why. Free text the approver sees. Do not put special-category personal data here.',
-				displayOptions: { show: { operation: ['wait', 'create'] } },
-			},
-			{
 				displayName: 'Risk',
 				name: 'risk',
 				type: 'options',
@@ -87,22 +86,6 @@ export class Raposa implements INodeType {
 				],
 				default: 'medium',
 				displayOptions: { show: { operation: ['wait', 'create'] } },
-			},
-			{
-				displayName: 'Requested By',
-				name: 'requestedBy',
-				type: 'string',
-				default: 'n8n',
-				description: 'Identifier of the agent or workflow asking',
-				displayOptions: { show: { operation: ['wait', 'create'] } },
-			},
-			{
-				displayName: 'Webhook URL',
-				name: 'webhookUrl',
-				type: 'string',
-				default: '',
-				description: 'Optional. Raposa POSTs the decision here, HMAC-signed with your webhook secret.',
-				displayOptions: { show: { operation: ['create'] } },
 			},
 			{
 				displayName: 'Approval ID',
@@ -138,6 +121,38 @@ export class Raposa implements INodeType {
 					'Whether a rejected approval stops the workflow with an error. Turn off to route rejections yourself from the "status" field.',
 				displayOptions: { show: { operation: ['wait'] } },
 			},
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				default: {},
+				displayOptions: { show: { operation: ['wait', 'create'] } },
+				options: [
+					{
+						displayName: 'Context',
+						name: 'context',
+						type: 'string',
+						typeOptions: { rows: 3 },
+						default: '',
+						description: 'Why. Free text the approver sees. Do not put special-category personal data here.',
+					},
+					{
+						displayName: 'Requested By',
+						name: 'requestedBy',
+						type: 'string',
+						default: 'n8n',
+						description: 'Identifier of the agent or workflow asking',
+					},
+					{
+						displayName: 'Webhook URL',
+						name: 'webhookUrl',
+						type: 'string',
+						default: '',
+						description: 'Optional. Raposa POSTs the decision here, HMAC-signed with your webhook secret.',
+					},
+				],
+			},
 		],
 	};
 
@@ -169,15 +184,15 @@ export class Raposa implements INodeType {
 				continue;
 			}
 
+			const extra = this.getNodeParameter('additionalFields', i, {}) as IDataObject;
 			const body: IDataObject = {
 				action: this.getNodeParameter('action', i) as string,
-				context: this.getNodeParameter('context', i, '') as string,
+				context: (extra.context as string) || '',
 				risk: this.getNodeParameter('risk', i) as string,
-				requested_by: this.getNodeParameter('requestedBy', i, 'n8n') as string,
+				requested_by: (extra.requestedBy as string) || 'n8n',
 			};
-			if (operation === 'create') {
-				const webhookUrl = this.getNodeParameter('webhookUrl', i, '') as string;
-				if (webhookUrl) body.webhook_url = webhookUrl;
+			if (operation === 'create' && extra.webhookUrl) {
+				body.webhook_url = extra.webhookUrl as string;
 			}
 
 			const created = (await request({ method: 'POST', url: '/v1/approvals', body })) as Approval;
