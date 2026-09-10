@@ -56,6 +56,18 @@ test('create posts the approval body and returns the id without polling', async 
 	assert.equal(ctx.calls[0].url, 'https://example.test/api/v1/approvals');
 	assert.equal(ctx.calls[0].body.webhook_url, 'https://hook.example/x');
 	assert.equal(ctx.calls[0].body.requested_by, 'agent-1');
+	assert.equal(ctx.calls[0].body.context, 'why');
+});
+
+test('create without Additional Fields still sends a non-empty context (API min_length=1)', async () => {
+	const ctx = makeContext({
+		params: { operation: 'create', action: 'refund #2', risk: 'low' },
+		responses: [{ id: 'ap_2', status: 'pending' }],
+	});
+	await new Raposa().execute.call(ctx);
+	assert.equal(ctx.calls[0].body.context, 'refund #2');
+	assert.equal(ctx.calls[0].body.requested_by, 'n8n');
+	assert.equal('webhook_url' in ctx.calls[0].body, false);
 });
 
 test('wait polls until approved and returns the decided record', async () => {

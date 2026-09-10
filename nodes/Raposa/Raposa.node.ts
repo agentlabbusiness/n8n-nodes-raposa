@@ -135,7 +135,7 @@ export class Raposa implements INodeType {
 						type: 'string',
 						typeOptions: { rows: 3 },
 						default: '',
-						description: 'Why. Free text the approver sees. Do not put special-category personal data here.',
+						description: 'Why. Free text the approver sees. Left empty, the action text is sent as the context. Do not put special-category personal data here.',
 					},
 					{
 						displayName: 'Requested By',
@@ -185,9 +185,11 @@ export class Raposa implements INodeType {
 			}
 
 			const extra = this.getNodeParameter('additionalFields', i, {}) as IDataObject;
+			const action = this.getNodeParameter('action', i) as string;
+			// The API requires a non-empty context (min_length=1); an omitted optional field must not 422.
 			const body: IDataObject = {
-				action: this.getNodeParameter('action', i) as string,
-				context: (extra.context as string) || '',
+				action,
+				context: ((extra.context as string) || '').trim() || action,
 				risk: this.getNodeParameter('risk', i) as string,
 				requested_by: (extra.requestedBy as string) || 'n8n',
 			};
