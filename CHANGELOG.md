@@ -4,6 +4,15 @@ All notable changes to `n8n-nodes-raposa` are documented here. The format follow
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.8] — 2026-09-21
+
+### Fixed
+- Passes n8n's community-package scan (`@n8n/scan-community-package`): the *Ask and Wait*
+  preflight no longer re-throws a caught error raw (rule
+  `@n8n/community-nodes/require-node-api-error`). Behaviour is unchanged — "no approver"
+  still fails fast with the same `NodeOperationError`, and a failing preflight request is
+  still fail-open.
+
 ## [0.1.7] — 2026-09-21
 
 ### Changed
