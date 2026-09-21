@@ -31,12 +31,6 @@ jobs:
         # npm@11 (>=11.5.1) supports OIDC and is compatible with Node 22.x.
         # npm@latest is 12.x, which requires Node >=22.22.2 and would break the pin.
         run: npm install -g npm@11
-      - name: OIDC / npm diagnostics
-        run: |
-          echo "node: $(node -v)"
-          echo "npm:  $(npm -v)"
-          echo "id-token request url present: ${ACTIONS_ID_TOKEN_REQUEST_URL:+yes}"
-          echo "id-token request token present: ${ACTIONS_ID_TOKEN_REQUEST_TOKEN:+yes}"
       - run: npm ci
       - run: npm run lint
       - run: npm test
