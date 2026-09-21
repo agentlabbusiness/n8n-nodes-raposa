@@ -28,7 +28,9 @@ jobs:
         with:
           node-version: "22.14"
       - name: Upgrade npm to a version with OIDC trusted publishing support
-        run: npm install -g npm@latest
+        # npm@11 (>=11.5.1) supports OIDC and is compatible with Node 22.x.
+        # npm@latest is 12.x, which requires Node >=22.22.2 and would break the pin.
+        run: npm install -g npm@11
       - run: npm ci
       - run: npm run lint
       - run: npm test
