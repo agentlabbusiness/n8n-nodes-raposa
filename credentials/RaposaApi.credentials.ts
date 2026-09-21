@@ -17,6 +17,13 @@ export class RaposaApi implements ICredentialType {
 
 	properties: INodeProperties[] = [
 		{
+			displayName:
+				'Before your first run: your Raposa account needs an approver — the human who presses Approve. A self-service sandbox key already has your own email set as the default approver. If you removed it, add one (or connect Slack/Telegram) in the portal, otherwise "Ask and Wait" can only time out. See <a href="https://raposa.group/docs/#who-approves" target="_blank">Who approves</a>.',
+			name: 'approverNotice',
+			type: 'notice',
+			default: '',
+		},
+		{
 			displayName: 'Base URL',
 			name: 'baseUrl',
 			type: 'string',

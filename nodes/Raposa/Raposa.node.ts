@@ -197,6 +197,32 @@ export class Raposa implements INodeType {
 				body.webhook_url = extra.webhookUrl as string;
 			}
 
+			// Preflight (Ask and Wait only): a request with nobody who can press
+			// Approve can only ever run to timeout. Rather than let the node hang
+			// for the full timeout and then fail, check up front and fail fast with
+			// an actionable message. Fail-open: if the check itself errors (older
+			// backend, transient network) we do not block a possibly-working setup.
+			if (operation === 'wait') {
+				try {
+					const who = (await request({ method: 'GET', url: '/v1/approvers' })) as {
+						approvers?: unknown[];
+					};
+					if (Array.isArray(who.approvers) && who.approvers.length === 0) {
+						throw new NodeOperationError(
+							this.getNode(),
+							'No approver is configured on this Raposa account, so this request could only ever time out. ' +
+								'Add an approver (or connect Slack/Telegram) in your account first: ' +
+								`${baseUrl.replace(/\/api$/, '')}/api/portal — see https://raposa.group/docs/#who-approves`,
+							{ itemIndex: i },
+						);
+					}
+				} catch (error) {
+					// A definitive "no approver" is ours to raise; anything else
+					// (endpoint missing, network) must not stop a real workflow.
+					if (error instanceof NodeOperationError) throw error;
+				}
+			}
+
 			const created = (await request({ method: 'POST', url: '/v1/approvals', body })) as Approval;
 
 			if (operation === 'create') {
@@ -215,7 +241,8 @@ export class Raposa implements INodeType {
 				if (Date.now() >= deadline) {
 					throw new NodeOperationError(
 						this.getNode(),
-						`Raposa approval ${current.id} was not decided within ${timeoutMs / 60_000} minutes — treating as not approved`,
+						`Raposa approval ${current.id} was not decided within ${timeoutMs / 60_000} minutes — treating as not approved. ` +
+							'If no human was ever notified, check that an approver is configured and reachable (portal → approvers, or Slack/Telegram).',
 						{ itemIndex: i },
 					);
 				}

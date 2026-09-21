@@ -1,0 +1,90 @@
+{
+  "name": "Raposa — human approval gate (example)",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "b1a1e2c0-0000-4000-8000-000000000001",
+      "name": "When clicking 'Execute workflow'",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        260,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "approval",
+        "operation": "wait",
+        "action": "refund order #4471 — EUR 900",
+        "risk": "high",
+        "timeoutMinutes": 60,
+        "pollSeconds": 10,
+        "failOnReject": true,
+        "additionalFields": {
+          "context": "Customer opened a dispute on order #4471. Refund requested by the support agent.",
+          "requestedBy": "n8n-support-flow"
+        }
+      },
+      "id": "b1a1e2c0-0000-4000-8000-000000000002",
+      "name": "Raposa Approval",
+      "type": "n8n-nodes-raposa.raposa",
+      "typeVersion": 1,
+      "position": [
+        520,
+        300
+      ],
+      "credentials": {
+        "raposaApi": {
+          "id": "REPLACE_WITH_YOUR_CREDENTIAL_ID",
+          "name": "Raposa API"
+        }
+      },
+      "notesInFlow": true,
+      "notes": "Continues ONLY if a human approves. Reject or timeout throws — silence is never consent. Your account must have an approver (portal → approvers, or Slack/Telegram); a self-service sandbox key already has your email set as one."
+    },
+    {
+      "parameters": {},
+      "id": "b1a1e2c0-0000-4000-8000-000000000003",
+      "name": "Do the refund (only after approval)",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        800,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "When clicking 'Execute workflow'": {
+      "main": [
+        [
+          {
+            "node": "Raposa Approval",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Raposa Approval": {
+      "main": [
+        [
+          {
+            "node": "Do the refund (only after approval)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}

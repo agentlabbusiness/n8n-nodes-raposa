@@ -70,23 +70,32 @@ test('create without Additional Fields still sends a non-empty context (API min_
 	assert.equal('webhook_url' in ctx.calls[0].body, false);
 });
 
+// From 0.1.6 "Ask and Wait" first calls GET /v1/approvers so an account with no
+// approver fails fast instead of hanging to timeout. A populated preflight
+// response therefore leads every wait scenario below.
+const HAS_APPROVER = { approvers: [{ user: 'owner-1', email: 'a@b.io' }] };
+
 test('wait polls until approved and returns the decided record', async () => {
 	const ctx = makeContext({
 		params: { operation: 'wait', action: 'a', context: 'c', risk: 'low', requestedBy: 'n8n', timeoutMinutes: 1, pollSeconds: 2, failOnReject: true },
-		responses: [{ id: 'ap_2', status: 'pending' }, { id: 'ap_2', status: 'pending' }, { id: 'ap_2', status: 'approved' }],
+		responses: [HAS_APPROVER, { id: 'ap_2', status: 'pending' }, { id: 'ap_2', status: 'pending' }, { id: 'ap_2', status: 'approved' }],
 	});
 	// shrink the poll interval so the test does not actually sleep 2s per round
 	ctx.getNodeParameter = (name, _i, fb) => (name === 'pollSeconds' ? 0.01 : ({ operation: 'wait', action: 'a', context: 'c', risk: 'low', requestedBy: 'n8n', timeoutMinutes: 1, failOnReject: true })[name] ?? fb);
 	const [out] = await new Raposa().execute.call(ctx);
 	assert.equal(out[0].json.status, 'approved');
-	assert.equal(ctx.calls.length, 3);
-	assert.equal(ctx.calls[1].method, 'GET');
-	assert.match(ctx.calls[1].url, /\/v1\/approvals\/ap_2$/);
+	assert.equal(ctx.calls.length, 4);
+	assert.equal(ctx.calls[0].method, 'GET');
+	assert.match(ctx.calls[0].url, /\/v1\/approvers$/);
+	assert.equal(ctx.calls[1].method, 'POST');
+	assert.match(ctx.calls[1].url, /\/v1\/approvals$/);
+	assert.equal(ctx.calls[2].method, 'GET');
+	assert.match(ctx.calls[2].url, /\/v1\/approvals\/ap_2$/);
 });
 
 test('wait fails on reject by default and passes rejection through when asked', async () => {
 	const base = { operation: 'wait', action: 'a', context: 'c', risk: 'low', requestedBy: 'n8n', timeoutMinutes: 1 };
-	const rejecting = () => makeContext({ params: base, responses: [{ id: 'ap_3', status: 'rejected' }] });
+	const rejecting = () => makeContext({ params: base, responses: [HAS_APPROVER, { id: 'ap_3', status: 'rejected' }] });
 
 	const strict = rejecting();
 	strict.getNodeParameter = (name, _i, fb) => (name === 'failOnReject' ? true : name === 'pollSeconds' ? 0.01 : base[name] ?? fb);
@@ -100,7 +109,27 @@ test('wait fails on reject by default and passes rejection through when asked', 
 
 test('wait never treats silence as approval: timeout throws', async () => {
 	const base = { operation: 'wait', action: 'a', context: 'c', risk: 'low', requestedBy: 'n8n', failOnReject: true };
-	const ctx = makeContext({ params: base, responses: [{ id: 'ap_4', status: 'pending' }] });
+	const ctx = makeContext({ params: base, responses: [HAS_APPROVER, { id: 'ap_4', status: 'pending' }] });
 	ctx.getNodeParameter = (name, _i, fb) => (name === 'timeoutMinutes' ? 0.0005 : name === 'pollSeconds' ? 0.01 : base[name] ?? fb);
 	await assert.rejects(() => new Raposa().execute.call(ctx), /not decided within/);
+});
+
+test('wait fails fast with a clear message when the account has no approver', async () => {
+	const base = { operation: 'wait', action: 'a', context: 'c', risk: 'low', requestedBy: 'n8n', timeoutMinutes: 60, failOnReject: true };
+	const ctx = makeContext({ params: base, responses: [{ approvers: [] }] });
+	ctx.getNodeParameter = (name, _i, fb) => (name === 'pollSeconds' ? 0.01 : base[name] ?? fb);
+	await assert.rejects(() => new Raposa().execute.call(ctx), /No approver is configured/);
+	// It never created a doomed approval: only the preflight GET happened.
+	assert.equal(ctx.calls.length, 1);
+	assert.match(ctx.calls[0].url, /\/v1\/approvers$/);
+});
+
+test('wait is fail-open: a preflight error does not block a working workflow', async () => {
+	const base = { operation: 'wait', action: 'a', context: 'c', risk: 'low', requestedBy: 'n8n', timeoutMinutes: 1, failOnReject: true };
+	// First call (preflight) errors; the node must proceed to create + poll.
+	const ctx = makeContext({ params: base, responses: [new Error('approvers endpoint down'), { id: 'ap_5', status: 'approved' }] });
+	ctx.getNodeParameter = (name, _i, fb) => (name === 'pollSeconds' ? 0.01 : base[name] ?? fb);
+	const [out] = await new Raposa().execute.call(ctx);
+	assert.equal(out[0].json.status, 'approved');
+	assert.equal(ctx.calls[1].method, 'POST');
 });
