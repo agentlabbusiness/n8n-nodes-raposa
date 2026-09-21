@@ -1,9 +1,13 @@
-# Publishes n8n-nodes-raposa to npm with a provenance statement.
-# n8n verified community nodes require this path since 2026-05-01
-# (https://docs.n8n.io/integrations/community-nodes/building-community-nodes/).
-# Auth: the NPM_TOKEN repository secret (granular publish token from 1Password Dev-API/npm).
-# Provenance is attested through the workflow's OIDC id-token regardless of the auth method.
-# Optional upgrade: configure npm Trusted Publishing on npmjs.com and drop the secret.
+# Publishes n8n-nodes-raposa to npm via Trusted Publishing (OIDC) with provenance.
+# No npm token: npmjs.com is configured with this repo + this workflow as a
+# Trusted Publisher, so publish authenticates through the workflow's OIDC id-token.
+# n8n verified community nodes require the provenance attestation (since 2026-05-01):
+# https://docs.n8n.io/integrations/community-nodes/building-community-nodes/
+#
+# Requirements for OIDC trusted publishing:
+#   - permissions.id-token: write   (mint the OIDC token)
+#   - Node >= 22.14 and npm >= 11.5.1 (OIDC support in the npm CLI)
+#   - no NODE_AUTH_TOKEN / registry-url secret auth (not needed, and it overrides OIDC)
 name: publish
 
 on:
@@ -22,11 +26,10 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
-          registry-url: https://registry.npmjs.org
+          node-version: "22.14"
+      - name: Upgrade npm to a version with OIDC trusted publishing support
+        run: npm install -g npm@latest
       - run: npm ci
       - run: npm run lint
       - run: npm test
-      - run: npm publish --access public --provenance
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM }}   # granular publish token (repo secret named NPM); provenance still comes from the OIDC id-token
+      - run: npm publish --provenance --access public
