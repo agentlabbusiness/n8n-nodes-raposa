@@ -4,6 +4,16 @@ All notable changes to `n8n-nodes-raposa` are documented here. The format follow
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.7] — 2026-09-21
+
+### Changed
+- Republished through CI so the npm release carries a provenance attestation.
+  0.1.6 was published locally (its npm metadata shows a non-CI Node runtime) and
+  therefore shipped without provenance, which n8n's verified-community-node review
+  flagged. No functional or code changes — this release is byte-for-byte the same
+  node, re-released through the `publish.yml` GitHub Actions workflow (`id-token:
+  write` + `npm publish --provenance`) so the attestation is present.
+
 ## [0.1.6] — 2026-09-21
 
 ### Added
@@ -47,6 +57,7 @@ All notable changes to `n8n-nodes-raposa` are documented here. The format follow
   bearer-token credential with a `GET /v1/me` test, light/dark icons, and
   `usableAsTool` support so the node works as a tool for AI agents.
 
+[0.1.7]: https://github.com/agentlabbusiness/n8n-nodes-raposa/releases/tag/v0.1.7
 [0.1.6]: https://github.com/agentlabbusiness/n8n-nodes-raposa/releases/tag/v0.1.6
 [0.1.5]: https://github.com/agentlabbusiness/n8n-nodes-raposa/releases/tag/v0.1.5
 [0.1.4]: https://github.com/agentlabbusiness/n8n-nodes-raposa/releases/tag/v0.1.4
