@@ -203,23 +203,25 @@ export class Raposa implements INodeType {
 			// an actionable message. Fail-open: if the check itself errors (older
 			// backend, transient network) we do not block a possibly-working setup.
 			if (operation === 'wait') {
+				let noApprover = false;
 				try {
 					const who = (await request({ method: 'GET', url: '/v1/approvers' })) as {
 						approvers?: unknown[];
 					};
-					if (Array.isArray(who.approvers) && who.approvers.length === 0) {
-						throw new NodeOperationError(
-							this.getNode(),
-							'No approver is configured on this Raposa account, so this request could only ever time out. ' +
-								'Add an approver (or connect Slack/Telegram) in your account first: ' +
-								`${baseUrl.replace(/\/api$/, '')}/api/portal — see https://raposa.group/docs/#who-approves`,
-							{ itemIndex: i },
-						);
-					}
-				} catch (error) {
-					// A definitive "no approver" is ours to raise; anything else
-					// (endpoint missing, network) must not stop a real workflow.
-					if (error instanceof NodeOperationError) throw error;
+					noApprover = Array.isArray(who.approvers) && who.approvers.length === 0;
+				} catch {
+					// Fail-open: endpoint missing or network error must not stop a real workflow.
+				}
+				// A definitive "no approver" is ours to raise. Thrown outside the catch so
+				// nothing is re-thrown raw (n8n scanner: @n8n/community-nodes/require-node-api-error).
+				if (noApprover) {
+					throw new NodeOperationError(
+						this.getNode(),
+						'No approver is configured on this Raposa account, so this request could only ever time out. ' +
+							'Add an approver (or connect Slack/Telegram) in your account first: ' +
+							`${baseUrl.replace(/\/api$/, '')}/api/portal — see https://raposa.group/docs/#who-approves`,
+						{ itemIndex: i },
+					);
 				}
 			}
 
