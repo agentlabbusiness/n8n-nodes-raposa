@@ -13,8 +13,9 @@ Before pushing the release tag, all of the following must be true:
    environment. npm publisher configuration is checked in the npm account UI;
    package metadata does not expose it.
 3. The owner has approved the exact commit and the exact `v0.2.0` tag.
-4. `npm ci`, `npm run lint`, `npm test`, `npm run scan:community`,
-   `npm audit --omit=dev`, and `npm pack --dry-run` pass from that clean commit.
+4. The GitHub Actions `verify` check is green on the exact commit. It runs
+   `npm ci`, `npm run lint`, `npm test`, `npm run scan:community`,
+   `npm audit --omit=dev`, and `npm pack --dry-run` from a clean checkout.
 5. The published workflow must finish its registry tarball SHA-1 comparison,
    SLSA provenance readback, and exact-version n8n registry scan.
 
