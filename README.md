@@ -21,9 +21,9 @@ Import [`docs/example-workflow.json`](docs/example-workflow.json) (**Workflows �
 
 | Operation | What happens |
 |---|---|
-| **Ask and Wait** | Creates the approval, polls until a human approves or rejects. Timeout is an error — silence never counts as approval. Rejection fails the workflow unless you turn *Fail on Reject* off and route on `status` yourself. |
-| **Create** | Creates the approval and returns its `id` immediately. Give a *Webhook URL* to receive the HMAC-signed decision instead of polling. |
-| **Get** | Reads an approval by `id`. |
+| **Ask and Wait** | Creates the approval and polls for a human decision. Only `approved` reaches the first (*Approved / Success*) output. Timeout, expiry, malformed responses, and unknown statuses always fail closed. Rejection fails unless you explicitly turn *Fail on Reject* off; then it is isolated on the second (*Not Approved*) output and can never reach the guarded connection. |
+| **Create** | Creates the approval and returns its `id` immediately on the neutral *API Result* output. Give a *Webhook URL* to receive the HMAC-signed decision instead of polling. |
+| **Get** | Reads an approval by `id` on *API Result*. A fetched status is data, not permission to run a protected action. |
 
 ## Credentials
 
@@ -37,12 +37,29 @@ Get a free sandbox key at https://raposa.group/start/?plan=sandbox — you recei
 
 Self-hosted n8n: **Settings → Community Nodes → Install** → `n8n-nodes-raposa`.
 
+*Ask and Wait* has two outputs; *Create* and *Get* have one neutral output. For
+a mandatory effect gate, connect the protected action only to *Approved /
+Success*. n8n's own *Continue On Fail* and arbitrary workflow wiring are not a
+security boundary; the target credential and final execution enforcement must
+remain in the Raposa backend.
+
+Upgrade note for `0.2.0`: existing *Ask and Wait* workflows with *Fail on
+Reject* enabled keep the approved path on output 0. A workflow that deliberately
+sets *Fail on Reject* off must connect its rejection handler to the new *Not
+Approved* output; a rejection no longer shares the success connection.
+
 ## Develop
 
 ```bash
 npm install
 npm test        # builds, then runs the behaviour tests against a fake API
+npm run scan:community
 ```
+
+Maintainers must also complete the repository's
+[controlled release checklist](https://github.com/agentlabbusiness/n8n-nodes-raposa/blob/main/RELEASE.md).
+A local green build does not authorize a tag, npm publication, or production
+deployment.
 
 ## Links
 

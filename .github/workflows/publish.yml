@@ -13,7 +13,6 @@ name: publish
 on:
   push:
     tags: ["v*"]
-  workflow_dispatch:
 
 permissions:
   contents: read
@@ -22,8 +21,18 @@ permissions:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    environment: npm-publish
     steps:
       - uses: actions/checkout@v4
+      - name: Verify tag matches package version
+        run: |
+          node - <<'JS'
+          const version = require('./package.json').version;
+          const expected = `v${version}`;
+          if (process.env.GITHUB_REF_NAME !== expected) {
+            throw new Error(`release tag ${process.env.GITHUB_REF_NAME} does not match ${expected}`);
+          }
+          JS
       - uses: actions/setup-node@v4
         with:
           node-version: "22.14"
@@ -34,4 +43,21 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm test
-      - run: npm publish --provenance --access public
+      - run: npm run scan:community
+      - run: npm audit --omit=dev
+      - name: Pack exact release candidate
+        run: |
+          npm pack --json > /tmp/npm-pack.json
+          node - <<'JS'
+          const fs = require('node:fs');
+          const packed = JSON.parse(fs.readFileSync('/tmp/npm-pack.json', 'utf8'))[0];
+          const pkg = require('./package.json');
+          fs.appendFileSync(process.env.GITHUB_ENV, `PACKAGE_SPEC=${pkg.name}@${pkg.version}\n`);
+          fs.appendFileSync(process.env.GITHUB_ENV, `LOCAL_TARBALL_SHA1=${packed.shasum}\n`);
+          fs.appendFileSync(process.env.GITHUB_ENV, `RELEASE_TARBALL=${packed.filename}\n`);
+          JS
+      - run: npm publish "$RELEASE_TARBALL" --provenance --access public
+      - name: Verify registry artifact and provenance
+        run: node scripts/verify-published.mjs "$PACKAGE_SPEC" "$LOCAL_TARBALL_SHA1"
+      - name: Scan exact published package
+        run: npm run scan:community -- "$PACKAGE_SPEC"

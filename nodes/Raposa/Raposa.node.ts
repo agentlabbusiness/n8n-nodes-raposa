@@ -8,11 +8,23 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError, NodeConnectionTypes, NodeOperationError, sleep } from 'n8n-workflow';
 
+type ApprovalStatus = 'pending' | 'approved' | 'rejected' | 'expired';
+
 type Approval = {
 	id: string;
-	status: 'pending' | 'approved' | 'rejected' | string;
+	status: ApprovalStatus;
 	[key: string]: unknown;
 };
+
+const APPROVAL_STATUSES = new Set<ApprovalStatus>(['pending', 'approved', 'rejected', 'expired']);
+
+export const configuredOutputs = (parameters: IDataObject) =>
+	parameters.operation === 'wait'
+		? [
+				{ type: 'main', displayName: 'Approved / Success' },
+				{ type: 'main', displayName: 'Not Approved' },
+			]
+		: [{ type: 'main', displayName: 'API Result' }];
 
 export class Raposa implements INodeType {
 	description: INodeTypeDescription = {
@@ -27,7 +39,7 @@ export class Raposa implements INodeType {
 			'Pause until an authorised human approves an action; every decision is sealed in a hash-chained audit log',
 		defaults: { name: 'Raposa Approval' },
 		inputs: [NodeConnectionTypes.Main],
-		outputs: [NodeConnectionTypes.Main],
+		outputs: `={{(${configuredOutputs})($parameter)}}`,
 		credentials: [{ name: 'raposaApi', required: true }],
 		properties: [
 			{
@@ -118,7 +130,7 @@ export class Raposa implements INodeType {
 				type: 'boolean',
 				default: true,
 				description:
-					'Whether a rejected approval stops the workflow with an error. Turn off to route rejections yourself from the "status" field.',
+					'Whether a rejected approval stops the workflow with an error. Turn off to route it only through the separate Not Approved output.',
 				displayOptions: { show: { operation: ['wait'] } },
 			},
 			{
@@ -158,7 +170,10 @@ export class Raposa implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const out: INodeExecutionData[] = [];
+		const operationForOutputs = this.getNodeParameter('operation', 0) as string;
+		const approved: INodeExecutionData[] = [];
+		const notApproved: INodeExecutionData[] = [];
+		const apiResult: INodeExecutionData[] = [];
 		const credentials = (await this.getCredentials('raposaApi')) as { baseUrl: string };
 		const baseUrl = String(credentials.baseUrl || 'https://dcescrypt.com/api').replace(/\/+$/, '');
 
@@ -174,13 +189,48 @@ export class Raposa implements INodeType {
 			}
 		};
 
+		const approvalResponse = (
+			value: IDataObject,
+			itemIndex: number,
+			expectedId?: string,
+		): Approval => {
+			const id = value.id;
+			const status = value.status;
+			if (typeof id !== 'string' || id.length === 0) {
+				throw new NodeOperationError(
+					this.getNode(),
+					'Raposa returned an approval response without a valid ID — stopping the workflow',
+					{ itemIndex },
+				);
+			}
+			if (expectedId !== undefined && id !== expectedId) {
+				throw new NodeOperationError(
+					this.getNode(),
+					`Raposa returned approval ${id} while waiting for ${expectedId} — stopping the workflow`,
+					{ itemIndex },
+				);
+			}
+			if (typeof status !== 'string' || !APPROVAL_STATUSES.has(status as ApprovalStatus)) {
+				throw new NodeOperationError(
+					this.getNode(),
+					`Raposa returned an unknown approval status (${String(status)}) — treating as not approved`,
+					{ itemIndex },
+				);
+			}
+			return value as Approval;
+		};
+
 		for (let i = 0; i < items.length; i++) {
 			const operation = this.getNodeParameter('operation', i) as string;
 
 			if (operation === 'get') {
 				const id = this.getNodeParameter('approvalId', i) as string;
-				const approval = await request({ method: 'GET', url: `/v1/approvals/${encodeURIComponent(id)}` });
-				out.push({ json: approval, pairedItem: { item: i } });
+				const approval = approvalResponse(
+					await request({ method: 'GET', url: `/v1/approvals/${encodeURIComponent(id)}` }),
+					i,
+					id,
+				);
+				apiResult.push({ json: approval as IDataObject, pairedItem: { item: i } });
 				continue;
 			}
 
@@ -200,8 +250,9 @@ export class Raposa implements INodeType {
 			// Preflight (Ask and Wait only): a request with nobody who can press
 			// Approve can only ever run to timeout. Rather than let the node hang
 			// for the full timeout and then fail, check up front and fail fast with
-			// an actionable message. Fail-open: if the check itself errors (older
-			// backend, transient network) we do not block a possibly-working setup.
+			// an actionable message. This is only an advisory availability check:
+			// if it errors, the mandatory decision loop below still admits only an
+			// exact approved response to the guarded output.
 			if (operation === 'wait') {
 				let noApprover = false;
 				try {
@@ -210,7 +261,7 @@ export class Raposa implements INodeType {
 					};
 					noApprover = Array.isArray(who.approvers) && who.approvers.length === 0;
 				} catch {
-					// Fail-open: endpoint missing or network error must not stop a real workflow.
+					// An unavailable advisory endpoint cannot weaken the decision gate below.
 				}
 				// A definitive "no approver" is ours to raise. Thrown outside the catch so
 				// nothing is re-thrown raw (n8n scanner: @n8n/community-nodes/require-node-api-error).
@@ -225,10 +276,13 @@ export class Raposa implements INodeType {
 				}
 			}
 
-			const created = (await request({ method: 'POST', url: '/v1/approvals', body })) as Approval;
+			const created = approvalResponse(
+				await request({ method: 'POST', url: '/v1/approvals', body }),
+				i,
+			);
 
 			if (operation === 'create') {
-				out.push({ json: created as IDataObject, pairedItem: { item: i } });
+				apiResult.push({ json: created as IDataObject, pairedItem: { item: i } });
 				continue;
 			}
 
@@ -249,23 +303,47 @@ export class Raposa implements INodeType {
 					);
 				}
 				await sleep(Math.min(pollMs, Math.max(0, deadline - Date.now())));
-				current = (await request({
-					method: 'GET',
-					url: `/v1/approvals/${encodeURIComponent(current.id)}`,
-				})) as Approval;
+				current = approvalResponse(
+					await request({
+						method: 'GET',
+						url: `/v1/approvals/${encodeURIComponent(created.id)}`,
+					}),
+					i,
+					created.id,
+				);
 			}
 
-			if (current.status === 'rejected' && failOnReject) {
+			if (current.status === 'rejected') {
+				if (failOnReject) {
+					throw new NodeOperationError(
+						this.getNode(),
+						`Raposa approval ${current.id} was rejected by a human`,
+						{ itemIndex: i },
+					);
+				}
+				notApproved.push({ json: current as IDataObject, pairedItem: { item: i } });
+				continue;
+			}
+
+			if (current.status === 'expired') {
 				throw new NodeOperationError(
 					this.getNode(),
-					`Raposa approval ${current.id} was rejected by a human`,
+					`Raposa approval ${current.id} expired without approval — stopping the workflow`,
 					{ itemIndex: i },
 				);
 			}
 
-			out.push({ json: current as IDataObject, pairedItem: { item: i } });
+			if (current.status !== 'approved') {
+				throw new NodeOperationError(
+					this.getNode(),
+					`Raposa approval ${current.id} did not produce an approved decision`,
+					{ itemIndex: i },
+				);
+			}
+
+			approved.push({ json: current as IDataObject, pairedItem: { item: i } });
 		}
 
-		return [out];
+		return operationForOutputs === 'wait' ? [approved, notApproved] : [apiResult];
 	}
 }
