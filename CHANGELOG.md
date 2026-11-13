@@ -4,6 +4,27 @@ All notable changes to `n8n-nodes-raposa` are documented here. The format follow
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] — 2026-10-22
+
+### Security
+- Make *Ask and Wait* fail closed for expired, unknown, missing, or mismatched
+  approval responses. Only a valid `approved` decision can reach the first,
+  guarded output.
+- When *Fail on Reject* is explicitly disabled, isolate the rejected record on a
+  second *Not Approved* output instead of the guarded output.
+- Give *Create* and *Get* one neutral *API Result* output, while *Ask and Wait*
+  alone exposes the guarded decision outputs. Existing *Create/Get* output-0
+  connections remain compatible.
+- Add regression coverage for expiry after a failed advisory preflight and for
+  malformed API responses, and for every *Get* terminal status.
+
+### Release control
+- Remove manual workflow dispatch and require the Git tag to match the package
+  version before the provenance-enabled publish step.
+- Run the pinned n8n community analyser against local source before publication,
+  then run the registry/provenance scan on the exact published version after
+  artifact readback.
+
 ## [0.1.8] — 2026-09-21
 
 ### Fixed
