@@ -19,6 +19,10 @@ Import [`docs/example-workflow.json`](docs/example-workflow.json) (**Workflows â
 
 ## Operations
 
+This node covers only the approvals API (Ask and Wait / Create / Get). The
+Agent Core execution, recovery and reconciliation endpoints of the Raposa API
+are **not** exposed through this node.
+
 | Operation | What happens |
 |---|---|
 | **Ask and Wait** | Creates the approval and polls for a human decision. Only `approved` reaches the first (*Approved / Success*) output. Timeout, expiry, malformed responses, and unknown statuses always fail closed. Rejection fails unless you explicitly turn *Fail on Reject* off; then it is isolated on the second (*Not Approved*) output and can never reach the guarded connection. |
